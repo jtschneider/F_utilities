@@ -1,5 +1,5 @@
 module F_utilities;
-  using PyPlot;
+  # using PyPlot;
   using LinearAlgebra;
   using SpecialMatrices;
 
