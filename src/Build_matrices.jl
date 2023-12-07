@@ -118,6 +118,60 @@ function TFI_Hamiltonian(N, θ; PBC = +1)
     return H_TFI
 end
 
+function Build_A_TFI_impurity(N, h, impurity, PBC; im_pos::Int=N÷2)
+    
+    prefactor = -0.5
+
+    hopping = prefactor * ones(Float64, N - 1)
+    hopping[im_pos] = prefactor * impurity
+
+    onsite   = prefactor * 2h * ones(Float64, N)
+
+    M_A = LinearAlgebra.diagm(
+        -1 => hopping,
+         0 => onsite,
+        +1 => hopping,
+    )
+
+    M_A[1, N] = PBC
+    M_A[N, 1] = PBC
+
+    return M_A
+end
+
+
+function Build_B_TFI_impurity(N, impurity, PBC; im_pos::Int=N÷2)
+
+    prefactor = -0.5
+
+    hopping = prefactor * ones(Float64, N - 1)
+    hopping[im_pos] = prefactor * impurity
+
+
+    M_B = LinearAlgebra.diagm(
+        -1 => hopping,
+        # 0 => zeros(Float64, N),
+        +1 => -hopping,
+    )
+    M_B[1, N] = PBC
+    M_B[N, 1] = -PBC
+
+    return M_B
+end
+
+function TFI_Hamiltonian_impurity(N, h, impurity; PBC = +1, im_pos::Int=N÷2)
+    A = Build_A_TFI_impurity(N, h, impurity, PBC; im_pos=im_pos)
+    B = Build_B_TFI_impurity(N, impurity, PBC; im_pos=im_pos)
+
+    H = zeros(Float64, 2 * N, 2 * N)
+    H[1:N, 1:N] = -A
+    H[((1:N).+N), 1:N] = -B
+    H[1:N, (1:N).+N] = B
+    H[(1:N).+N, (1:N).+N] = A
+
+    return H
+end
+
 function Build_A_TFI_FIX(N, θ, PBC)
     M_A = LinearAlgebra.diagm(
         -1 => ones(Float64, N - 1),
