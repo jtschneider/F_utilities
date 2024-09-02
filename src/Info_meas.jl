@@ -24,33 +24,27 @@ function Eigenvalues_of_rho(M)
     return sort(evor;lt=!isless)
 end
 
-function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 14)
+function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 20)
 
     N = size(M, 1)÷2
 
-    evor = ones(Float64, 2^(mode_cutoff))
-
     D, U = LinearAlgebra.eigen(Hermitian(M))
 
+    trueModeCutoff = min(mode_cutoff,N)
 
-    D_reduced = sort(D)[N-mode_cutoff+1:N+mode_cutoff-1 .+ 1]
+    v_k = sort(D)[(N:(N+trueModeCutoff-1)) .+ 1]
 
-    for iiter = 1:2^(mode_cutoff)
-        index = iiter - 1
-        for jiter = 1:mode_cutoff
-            evor[iiter] *= round(
-                    (
-                        mod(index - 1, 2) * D_reduced[jiter] +
-                        (1 - mod(index - 1, 2)) * (D_reduced[jiter+mode_cutoff])
-                    ),
-                    digits = 64,
-                )
-            index -= mod(index, 2)
-            index = index / 2
-        end
+    v_k_inverse = 1.0 .- v_k
+	
+	λs = ones(Float64, 2^(trueModeCutoff))
+    
+    for (index, int_number) in enumerate(0:2^(trueModeCutoff)-1)
+        bits_selected = digits(Bool, int_number, base=2, pad = trueModeCutoff)
+        anti_selected = .!bits_selected
+        λs[index] = prod([v_k[bits_selected]..., v_k_inverse[anti_selected]...])
     end
 
-    return sort(evor;lt=!isless)
+    return sort(λs;lt=!isless)
 end
 
 function VN_entropy_old(M)
@@ -70,28 +64,9 @@ function VN_entropy_old(M)
 end
 
 function VN_entropy(M; kwargs...)
-    λs = entanglement_spectrum(M; kwargs...)
+    λs, U = LinearAlgebra.eigen(Hermitian(M))
     S = mapreduce(p -> -log(p)*p, +, λs)
     return S
-end
-
-function Renyi_entropy(M; order::Real, kwargs...)
-    if order <= 0 
-        throw(ArgumentError("Rényi order cannot be negative, it must be a positive real number!"))
-    end
-
-    if isone(order)
-        return VN_entropy(M;kwargs...)
-    else
-        λs = entanglement_spectrum(M; kwargs...)
-        power_sum = mapreduce(p -> p^(order), +, λs)
-        return -log(power_sum)/(1-order)
-    end
-end
-
-function entanglement_spectrum(M; accuracy::Int=32)
-    D, U = LinearAlgebra.eigen(Hermitian((M + M' )/ 2.0))
-    return round.(sort(abs.(D); lt=!isless); digits=accuracy)
 end
 
 
