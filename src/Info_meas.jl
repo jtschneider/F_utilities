@@ -1,7 +1,7 @@
 function Eigenvalues_of_rho(M)
     N = convert(Int64, size(M, 1) / 2)
 
-    evor = ones(Float64, 2^N)
+    evor = ones(ComplexF64, 2^N)
 
     D, U = Diag_gamma((M + M') / 2.0)
 
@@ -14,7 +14,7 @@ function Eigenvalues_of_rho(M)
                         mod(index - 1, 2) * D[jiter, jiter] +
                         (1 - mod(index - 1, 2)) * (D[jiter+N, jiter+N])
                     ),
-                    digits = 16,
+                    digits = 32,
                 )
             index -= mod(index, 2)
             index = index / 2
@@ -31,7 +31,7 @@ function VN_entropy(M)
 
     S = 0
     for iiter = 1:N
-        nu = abs(round.(D[iiter]; digits = 14))
+        nu = abs(round.(D[iiter]; digits = 32))
         if (nu != 0 && nu != 1)
             S -= log(nu) * nu
         end

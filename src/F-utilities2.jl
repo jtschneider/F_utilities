@@ -559,7 +559,7 @@ function VN_entropy(M)
     S = 0
 
     for iiter = 1:N
-        if (round(D[iiter, iiter], 18) < -0.0000000000001)
+        if (round(D[iiter, iiter], 32) < -1e-16)
             De, Ue = eig((M + M') / 2.0)
             for iiter = 1:N
                 println("DG: ", D[iiter, iiter])
@@ -568,10 +568,10 @@ function VN_entropy(M)
                 println("DE: ", De[iiter])
             end
             save("/home/jacopo/Dropbox/ermatr.jld", "M", M)
-            error = string("Eigenvalue in VE not in [0,1]: ", round(D[iiter, iiter], 18))
+            error = string("Eigenvalue in VE not in [0,1]: ", round(D[iiter, iiter], 32))
             throw(ArgumentError(error))
         end
-        nu = abs(round(D[iiter, iiter], 18))
+        nu = abs(round(D[iiter, iiter], 32))
         if (nu != 0 && nu != 1)
             #Invece di arrivare fino a N/2 nel ciclo e sommare nu e 1-nu, li passo tutti
             #perchè potrebbe essere che facendo una generica transformazione ortogonale non li abbia
@@ -838,29 +838,29 @@ function exponentially_truncate(Γ, m)
         M_finale[iiter+N_f, iiter+N_f] = Γ[iiter+N_f, iiter+N_f]
         for jiter = (m-1):off_diagonals
             M_finale[iiter, mod(iiter + jiter - 1, N_f)+1] =
-                min(1, round(10^(-δs * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δs * (jiter - (m - 2))), 16)) *
                 Γ[iiter, mod(iiter + jiter - 2, N_f)+1]
             M_finale[iiter+N_f, mod(iiter + jiter - 1, N_f)+1] =
-                min(1, round(10^(-δd * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δd * (jiter - (m - 2))), 16)) *
                 Γ[iiter+N_f, mod(iiter + jiter - 2, N_f)+1]
             M_finale[iiter, mod(iiter + jiter - 1, N_f)+1+N_f] =
-                min(1, round(10^(-δd * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δd * (jiter - (m - 2))), 16)) *
                 Γ[iiter, mod(iiter + jiter - 2, N_f)+1+N_f]
             M_finale[iiter+N_f, mod(iiter + jiter - 1, N_f)+1+N_f] =
-                min(1, round(10^(-δs * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δs * (jiter - (m - 2))), 16)) *
                 Γ[iiter+N_f, mod(iiter + jiter - 2, N_f)+1+N_f]
 
             M_finale[iiter, mod(iiter - jiter - 1, N_f)+1] =
-                min(1, round(10^(-δs * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δs * (jiter - (m - 2))), 16)) *
                 Γ[iiter, mod(iiter - jiter, N_f)+1]
             M_finale[iiter+N_f, mod(iiter - jiter - 1, N_f)+1] =
-                min(1, round(10^(-δd * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δd * (jiter - (m - 2))), 16)) *
                 Γ[iiter+N_f, mod(iiter - jiter, N_f)+1]
             M_finale[iiter, mod(iiter - jiter - 1, N_f)+1+N_f] =
-                min(1, round(10^(-δd * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δd * (jiter - (m - 2))), 16)) *
                 Γ[iiter, mod(iiter - jiter, N_f)+1+N_f]
             M_finale[iiter+N_f, mod(iiter - jiter - 1, N_f)+1+N_f] =
-                min(1, round(10^(-δs * (jiter - (m - 2))), 12)) *
+                min(1, round(10^(-δs * (jiter - (m - 2))), 16)) *
                 Γ[iiter+N_f, mod(iiter - jiter, N_f)+1+N_f]
         end
     end
