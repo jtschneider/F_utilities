@@ -24,10 +24,10 @@ function Eigenvalues_of_rho(M)
     return evor
 end
 
-function VN_entropy(M)
-    N = convert(Int64, size(M, 1))
+function VN_entropy_old(M)
+    N = size(M, 1)
 
-    D, U = LinearAlgebra.eigen((M + M') / 2.0)
+    D, U = LinearAlgebra.eigen(Hermitian((M + M') / 2.0))
 
     S = 0
     for iiter = 1:N
@@ -39,6 +39,19 @@ function VN_entropy(M)
 
     return S
 end
+
+function VN_entropy(M; kwargs...)
+    λs = entanglement_spectrum(M; kwargs...)
+    S = mapreduce(p -> -log(p)*p, +, λs)
+    return S
+end
+
+
+function entanglement_spectrum(M; accuracy::Int=32)
+    D, U = LinearAlgebra.eigen(Hermitian((M + M' )/ 2.0))
+    return round.(sort(abs.(D); lt=!isless); digits=accuracy)
+end
+
 
 
 function Purity(M)
