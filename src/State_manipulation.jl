@@ -72,7 +72,7 @@ function Reduce_gamma(M, N_partition, first_index)
             M[(1:periodic_dimension).+N_f, (first_index.+(1:dim_UL)).+N_f]
     end
 
-    return redgamma
+    return Hermitian(redgamma)
 end
 
 """

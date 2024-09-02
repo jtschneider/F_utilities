@@ -101,7 +101,7 @@ function Diag_h(M, rand_perturbation::Int64 = 0)
 end
 
 function Diag_gamma(Γ, rand_perturbation::Int64 = 0)
-    Γ = (Γ + Γ') / 2.0
+    Γ = Hermitian((Γ + Γ') / 2.0)
     γ, U = Diag_h(Γ - 0.5 * I, rand_perturbation)
 
     return U' * Γ * U, U#real(γ+0.5*eye(size(Γ,1))),U
@@ -131,7 +131,7 @@ function GS_gamma(D, U)
         # end
     end
     Gamma = U * Gamma_diag_base * U'
-    Gamma = (Gamma + (Gamma')) / 2.0
+    Gamma = Hermitian((Gamma + (Gamma')) / 2.0)
 
     return Gamma
 end
@@ -144,7 +144,7 @@ function Energy(Γ, (D, U))
     N_f = convert(Int64, size(Γ, 1) / 2.0)
 
     energy = 0
-    Γ = (Γ + Γ') / 2.0
+    Γ = Hermitian((Γ + Γ') / 2.0)
 
     Γ_diag_base = real(U' * Γ * U)
     for iiter = 1:(N_f)
