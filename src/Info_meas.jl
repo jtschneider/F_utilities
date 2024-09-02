@@ -33,7 +33,7 @@ function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 14)
     D, U = LinearAlgebra.eigen(Hermitian(M))
 
 
-    D_reduced = D[N-mode_cutoff+1:N+mode_cutoff-1 .+ 1]
+    D_reduced = sort(D)[N-mode_cutoff+1:N+mode_cutoff-1 .+ 1]
 
     for iiter = 1:2^(mode_cutoff)
         index = iiter - 1
