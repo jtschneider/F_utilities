@@ -32,7 +32,7 @@ function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 20)
 
     trueModeCutoff = min(mode_cutoff,N)
 
-    v_k = sort(D)[(N:(N+trueModeCutoff-1)) .+ 1]
+    v_k = sort(D)[ N+1 : N+trueModeCutoff]
 
     v_k_inverse = 1.0 .- v_k
 	
