@@ -63,9 +63,10 @@ function VN_entropy_old(M)
     return S
 end
 
-function VN_entropy(M; kwargs...)
+function VN_entropy(M; accuracy::Float64 = 1e-32)
     λs, U = LinearAlgebra.eigen(Hermitian(M))
-    S = mapreduce(p -> -log(p)*p, +, λs)
+    λs_filter = filter( p -> p >= accuracy,  λs)
+    S = mapreduce(p -> -log(p)*p, +, λs_filter)
     return S
 end
 
