@@ -35,16 +35,24 @@ function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 20)
     v_k = sort(D)[ N+1 : N+trueModeCutoff]
 
     v_k_inverse = 1.0 .- v_k
-	
-	λs = ones(Float64, 2^(trueModeCutoff))
+    
+    λs_even = zeros(Float64, 2^(trueModeCutoff))
+    λs_odd = zeros(Float64, 2^(trueModeCutoff))
+
     
     for (index, int_number) in enumerate(0:2^(trueModeCutoff)-1)
         bits_selected = digits(Bool, int_number, base=2, pad = trueModeCutoff)
         anti_selected = .!bits_selected
-        λs[index] = prod([v_k[bits_selected]..., v_k_inverse[anti_selected]...])
+
+        parity_pm = prod( (-1) .^ bits_selected )
+        if parity_pm == 1
+            λs_even[index] = prod([v_k[bits_selected]..., v_k_inverse[anti_selected]...])
+        else
+            λs_odd[index] = prod([v_k[bits_selected]..., v_k_inverse[anti_selected]...])
+        end
     end
 
-    return sort(λs;lt=!isless)
+    return (sort(λs_even;lt=!isless), sort(λs_odd;lt=!isless))
 end
 
 function VN_entropy_old(M)

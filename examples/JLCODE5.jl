@@ -1,11 +1,11 @@
 using F_utilities;
-using PyPlot;
+using Plots;
 using LinearAlgebra;
 
 const Fu = F_utilities;
 
 N   = 10;
-theta   = pi/4;
+theta   = pi/8;
 
 H_APBC          = Fu.TFI_Hamiltonian(N, theta; PBC=-1);
 HD_APBC, U_APBC = Fu.Diag_h(H_APBC);
@@ -40,28 +40,53 @@ AE_PBC[(N+1):(2*N)]     = -AE_PBC[1:N];
 AE_OBC[(N+1):(2*N)]     = -AE_OBC[1:N];
 
 
-fig = plt.figure("Comparison Analitical and Numerical Results",figsize=(10, 6), dpi=80)
-plt.subplots_adjust(wspace=0, hspace=0)
-ax1 = plt.subplot2grid((21,10), (0,0), colspan=10, rowspan=7);
-ax1.set_title("Comparison Analitical and Numerical ϵ_p/2")
-ax1.plot(sort(AE_APBC), color="black",  marker="o",
-        markersize=10, mfc="none" ,   label="Analytical APBC");
-ax1.plot(sort(NE_APBC), color="red", marker="+",
-        markersize=10,  linestyle="None", label="Numerical APBC");
+# fig = plt.figure("Comparison Analitical and Numerical Results",figsize=(10, 6), dpi=80)
+# plt.subplots_adjust(wspace=0, hspace=0)
+# ax1 = plt.subplot2grid((21,10), (0,0), colspan=10, rowspan=7);
+# ax1.set_title("Comparison Analitical and Numerical ϵ_p/2")
+# ax1.plot(sort(AE_APBC), color="black",  marker="o",
+#         markersize=10, mfc="none" ,   label="Analytical APBC");
+# ax1.plot(sort(NE_APBC), color="red", marker="+",
+#         markersize=10,  linestyle="None", label="Numerical APBC");
+# ax1.xaxis.set_ticklabels([])
+# legend();
+# ax2 = plt.subplot2grid((21,10), (7,0), colspan=10, rowspan=7);
+# ax2.plot(sort(NE_PBC),  color="purple",  marker="o",
+#         markersize=10, mfc="none" , label="Analytical PBC" );
+# ax2.plot(sort(AE_PBC), color="green", marker="+",
+#         markersize=10,  linestyle="None", label="Numerical PBC");
+# ax2.xaxis.set_ticklabels([])
+# legend();
+# ax3 = plt.subplot2grid((21,10), (14,0), colspan=10, rowspan=7);
+# ax3.plot(sort(NE_OBC),   color="blue",  marker="o",
+#         markersize=10, mfc="none" , label="Analytical OBC" );
+# ax3.plot(sort(AE_OBC),  color="orange", marker="+",
+#         markersize=10,  linestyle="None", label="Numerical OBC");
+# ax3.set_xlabel("p")
+# legend();
+# tight_layout();
+
+
+
+p1 = plot(sort(AE_APBC), color=:black,  marker=:c,
+        markersize=2, mfc=:transparent ,   label="Analytical APBC",
+        title="Comparison Analitical and Numerical ϵ_p/2")
+scatter!(p1, sort(NE_APBC), color=:red, marker=:+,
+        markersize=10, label="Numerical APBC")
 ax1.xaxis.set_ticklabels([])
 legend();
-ax2 = plt.subplot2grid((21,10), (7,0), colspan=10, rowspan=7);
+ax2 = plt.subplot2grid((21,10), (7,0), colspan=10, rowspan=7)
 ax2.plot(sort(NE_PBC),  color="purple",  marker="o",
-        markersize=10, mfc="none" , label="Analytical PBC" );
+        markersize=10, mfc="none" , label="Analytical PBC" )
 ax2.plot(sort(AE_PBC), color="green", marker="+",
-        markersize=10,  linestyle="None", label="Numerical PBC");
+        markersize=10,  linestyle="None", label="Numerical PBC")
 ax2.xaxis.set_ticklabels([])
 legend();
-ax3 = plt.subplot2grid((21,10), (14,0), colspan=10, rowspan=7);
+ax3 = plt.subplot2grid((21,10), (14,0), colspan=10, rowspan=7)
 ax3.plot(sort(NE_OBC),   color="blue",  marker="o",
-        markersize=10, mfc="none" , label="Analytical OBC" );
+        markersize=10, mfc="none" , label="Analytical OBC" )
 ax3.plot(sort(AE_OBC),  color="orange", marker="+",
-        markersize=10,  linestyle="None", label="Numerical OBC");
+        markersize=10,  linestyle="None", label="Numerical OBC")
 ax3.set_xlabel("p")
 legend();
 tight_layout();

@@ -52,10 +52,10 @@ end
 
 ν = 1.0
 	
-L_test = 50
+L_test = 200
 
-ξ_test = 10
-h = 1.0 - ξ_test^(-ν)
+ξ_test = 500
+h = 1.0 #1.0 - ξ_test^(-ν)
 
 H = TFI_Hamiltonian(L_test; h = h , J=1.0, PBC=0.0)
 HD, U = Fu.Diag_h(H,2)
@@ -66,6 +66,44 @@ L_A = L_test÷2
 l_init = 1
 
 Gamma_A =  Fu.Reduce_gamma(Γ,L_A,l_init)
-λs = abs.(Fu.Eigenvalues_of_rho(Gamma_A))
+
+NA = size(Gamma_A,1)
+D, U1 = LinearAlgebra.eigen(Gamma_A)
+D2, U2 = Fu.Diag_gamma(Hermitian(Gamma_A))
+
+
+# @show D1
+# @show D2
+
+N = size(Gamma_A, 1)÷2
+
+mode_cutoff = 20
+trueModeCutoff = min(mode_cutoff,N)
+
+v_k = sort(D)[(N:(N+trueModeCutoff-1)) ]
+
+
+D_reduced[mode_cutoff+1] ≈  1 - D_reduced[mode_cutoff]
+
+
+2^(2mode_cutoff)
+
+# λs = Fu.entanglement_spectrum(Gamma_A)
+# ent_energies = -log.(λs)
+
+λs1 = Fu.Eigenvalues_of_rho(Gamma_A)
+λs2 = Fu.approx_eigenvalues_of_rho(Gamma_A;mode_cutoff=12)
+
+λs1 - λs2
+[λs1 λs2]
+# Fu.Eigenvalues_of_rho(Gamma_A)
 #I compute the entangement entropy
-@show Fu.VN_entropy(Gamma_A)
+mapreduce(p -> -log(abs(p))*abs(p), +, λs2)
+mapreduce(p -> -log(abs(p))*abs(p), +, λs1)
+
+Fu.VN_entropy(Gamma_A)
+Fu.VN_entropy_old(Gamma_A)
+
+
+
+Fu.Diag_real_skew(Γ)
