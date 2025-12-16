@@ -63,6 +63,7 @@ function approx_eigenvalues_of_H(diagonal_H;
     )
 	# this yields the energies of each of the N modes, unfortunately doubled as fermions and anti-fermions are counted:
 	energy_per_mode  = diag(diagonal_H)
+    N = length(energy_per_mode)÷2
 	# note that modes_shifted == sort(modes) and
 	modes_shifted = energy_per_mode[end:-1:length(energy_per_mode)÷2+1]
 	# that mode are now occupied as 0,1 (either by a particle or a hole),
