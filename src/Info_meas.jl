@@ -55,6 +55,75 @@ function approx_eigenvalues_of_rho(M; mode_cutoff::Int = 20)
     return (sort(λs_even;lt=!isless), sort(λs_odd;lt=!isless))
 end
 
+
+function approx_eigenvalues_of_H(diagonal_H;
+	mode_cutoff::Int = 10,
+	array_lim::Union{Nothing,Int} = nothing,
+    return_occupation::Bool=false
+    )
+	# this yields the energies of each of the N modes, unfortunately doubled as fermions and anti-fermions are counted:
+	energy_per_mode  = diag(diagonal_H)
+	# note that modes_shifted == sort(modes) and
+	modes_shifted = energy_per_mode[end:-1:length(energy_per_mode)÷2+1]
+	# that mode are now occupied as 0,1 (either by a particle or a hole),
+    # NB: that one hole goes with NEGATIVE energy, while a particle has positive weight.
+    # One has therefore N modes with each either a weight of +/-1,
+    # giving rise to 2^N different states.
+
+	trueModeCutoff = min(mode_cutoff,N)
+	
+	occupation_energies_ℤ_even  = zeros(Float64, 2^(trueModeCutoff));
+	occupation_energies_ℤ_odd   = zeros(Float64, 2^(trueModeCutoff));
+
+	# all_occupations = map( n -> digits(Bool, n, base=2, pad = trueModeCutoff) )
+	occupations_even = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff))
+	occupations_odd  = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff))
+    # map the occupation 0,1 to the energy weight -1,1
+	map_01_pm(i::Bool) = (i == false) ? -1 : 1
+	
+	for (index, int_number) in enumerate(0:2^(trueModeCutoff)-1)
+    # we select to slice the (sorted) array of energy per mode with a bit array that must have same length
+    # however, we want to select all 2^(mode_cutoff)-1 different energy states
+    # by iterating over the binary representation of all integers between 0 and 2^(mode_cutoff)-1
+    # this is a good estimation for the first few energy levels and becomes increasingly inaccurate for
+    # higher energy levels as it is a priori not clear that a single particle state |0....01> is not smaller
+    # in energy than a many-body state |01101010...0>
+		bits_selected = digits(Bool, int_number, base=2, pad = trueModeCutoff)
+		# parity_pm = prod( (-1) .^ bits_selected )
+		parity_pm = count_ones(int_number)
+		weights = map_01_pm.(bits_selected)
+
+		if iseven(parity_pm)
+			occupation_energies_ℤ_even[index]  = sum(weights .* modes_shifted[1:trueModeCutoff])
+			occupations_even[:,index] = bits_selected
+		else
+			occupation_energies_ℤ_odd[index]  = sum(weights .* modes_shifted[1:trueModeCutoff])
+			occupations_odd[:,index] = bits_selected
+		end
+	end
+	p_even = sortperm(occupation_energies_ℤ_even)
+	p_odd  = sortperm(occupation_energies_ℤ_odd)
+
+    array_lim_R = isnothing(array_lim) ? 2^(trueModeCutoff) : array_lim
+
+	absolut_min = min(
+		occupation_energies_ℤ_even[p_even[1]] ,
+		occupation_energies_ℤ_odd[p_odd[1]]
+	)
+	
+	tared_even = (occupation_energies_ℤ_even[p_even])[1:array_lim_R] .- absolut_min
+	tared_odd  = (occupation_energies_ℤ_odd[p_odd])[1:array_lim_R] .- absolut_min
+
+	sorted_occupation_even = (occupations_even[:,p_even])[:,1:array_lim_R]
+	sorted_occupation_odd = (occupations_odd[:,p_odd])[:,1:array_lim_R]
+
+	if return_occupation
+	    return (tared_even, tared_odd, sorted_occupation_even, sorted_occupation_odd)
+    else
+        return (tared_even, tared_odd)
+    end
+end
+
 function VN_entropy_old(M)
     N = size(M, 1)
 
