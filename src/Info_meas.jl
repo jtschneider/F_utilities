@@ -59,7 +59,8 @@ end
 function approx_eigenvalues_of_H(diagonal_H;
 	mode_cutoff::Int = 10,
 	array_lim::Union{Nothing,Int} = nothing,
-    return_occupation::Bool=false
+    return_occupation::Bool=false,
+	untared::Bool = false,
     )
 	# this yields the energies of each of the N modes, unfortunately doubled as fermions and anti-fermions are counted:
 	energy_per_mode  = diag(diagonal_H)
@@ -73,15 +74,18 @@ function approx_eigenvalues_of_H(diagonal_H;
 
 	trueModeCutoff = min(mode_cutoff,N)
 	
-	occupation_energies_ℤ_even  = zeros(Float64, 2^(trueModeCutoff));
-	occupation_energies_ℤ_odd   = zeros(Float64, 2^(trueModeCutoff));
+	occupation_energies_ℤ_even  = zeros(Float64, 2^(trueModeCutoff-1));
+	occupation_energies_ℤ_odd   = zeros(Float64, 2^(trueModeCutoff-1));
 
 	# all_occupations = map( n -> digits(Bool, n, base=2, pad = trueModeCutoff) )
-	occupations_even = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff))
-	occupations_odd  = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff))
+	occupations_even = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff-1))
+	occupations_odd  = zeros(Bool, trueModeCutoff, 2^(trueModeCutoff-1))
     # map the occupation 0,1 to the energy weight -1,1
 	map_01_pm(i::Bool) = (i == false) ? -1 : 1
 	
+    ind0 = 0
+    ind1 = 0
+
 	for (index, int_number) in enumerate(0:2^(trueModeCutoff)-1)
     # we select to slice the (sorted) array of energy per mode with a bit array that must have same length
     # however, we want to select all 2^(mode_cutoff)-1 different energy states
@@ -95,19 +99,21 @@ function approx_eigenvalues_of_H(diagonal_H;
 		weights = map_01_pm.(bits_selected)
 
 		if iseven(parity_pm)
-			occupation_energies_ℤ_even[index]  = sum(weights .* modes_shifted[1:trueModeCutoff])
-			occupations_even[:,index] = bits_selected
+            ind0 += 1
+			occupation_energies_ℤ_even[ind0]  = sum(weights .* modes_shifted[1:trueModeCutoff])
+			occupations_even[:,ind0] = bits_selected
 		else
-			occupation_energies_ℤ_odd[index]  = sum(weights .* modes_shifted[1:trueModeCutoff])
-			occupations_odd[:,index] = bits_selected
+            ind1 += 1
+			occupation_energies_ℤ_odd[ind1]  = sum(weights .* modes_shifted[1:trueModeCutoff])
+			occupations_odd[:,ind1] = bits_selected
 		end
 	end
 	p_even = sortperm(occupation_energies_ℤ_even)
 	p_odd  = sortperm(occupation_energies_ℤ_odd)
 
-    array_lim_R = isnothing(array_lim) ? 2^(trueModeCutoff) : array_lim
+    array_lim_R = isnothing(array_lim) ? 2^(trueModeCutoff-1) : array_lim
 
-	absolut_min = min(
+	absolut_min = untared ? 0.0 : min(
 		occupation_energies_ℤ_even[p_even[1]] ,
 		occupation_energies_ℤ_odd[p_odd[1]]
 	)
@@ -115,10 +121,9 @@ function approx_eigenvalues_of_H(diagonal_H;
 	tared_even = (occupation_energies_ℤ_even[p_even])[1:array_lim_R] .- absolut_min
 	tared_odd  = (occupation_energies_ℤ_odd[p_odd])[1:array_lim_R] .- absolut_min
 
-	sorted_occupation_even = (occupations_even[:,p_even])[:,1:array_lim_R]
-	sorted_occupation_odd = (occupations_odd[:,p_odd])[:,1:array_lim_R]
-
 	if return_occupation
+        sorted_occupation_even = (occupations_even[:,p_even])[:,1:array_lim_R]
+	    sorted_occupation_odd = (occupations_odd[:,p_odd])[:,1:array_lim_R]
 	    return (tared_even, tared_odd, sorted_occupation_even, sorted_occupation_odd)
     else
         return (tared_even, tared_odd)
