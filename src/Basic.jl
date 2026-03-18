@@ -16,10 +16,11 @@ function Diag_real_skew(M, rand_perturbation::Int64 = 0)
             M += random_M
         end
         if (rand_perturbation == 5)
-            random_M = zeros(Complex{Float64}, 2N, 2N)
             r = eps()
-            M[1, 2] += r
-            M[2, 1] -= r
+            delta = zeros(eltype(M), size(M))
+            delta[1, 2] = r
+            delta[2, 1] = -r
+            M = M + delta
         end
     end
 
@@ -110,30 +111,12 @@ end
 
 function GS_gamma(D, U)
     N = div(size(D, 1), 2)
-
-    Gamma_diag_base = zeros(Complex{Float64}, 2 * N, 2 * N)
-    # for iiter=1:N
-    #     Gamma_diag_base[iiter+N, iiter+N] = 1;
-    # end
-    # Gamma = U*Gamma_diag_base*U';
-    #
-    #
-
-
-    for index = 1:N
-        if real(D[index, index]) < 0
-            Gamma_diag_base[index+N, index+N] = 1
-        else
-            Gamma_diag_base[index, index] = 1
-        end
-        # if real(D[index+N,index+N])<=0
-        #   Gamma_diag_base[index,index] = 1;
-        # end
-    end
-    Gamma = U * Gamma_diag_base * U'
-    Gamma = Hermitian((Gamma + (Gamma')) / 2.0)
-
-    return Gamma
+    T = eltype(U)
+    d = real.(diag(D)[1:N])
+    # Occupy particle mode if energy >= 0, hole mode if energy < 0
+    particle = [dₖ < 0 ? zero(T) : one(T) for dₖ in d]
+    Gamma = U * Diagonal(vcat(particle, one(T) .- particle)) * U'
+    return Hermitian((Gamma + Gamma') / 2)
 end
 
 
@@ -141,30 +124,17 @@ end
 
 
 function Energy(Γ, (D, U))
-    N_f = convert(Int64, size(Γ, 1) / 2.0)
-
-    energy = 0
-    Γ = Hermitian((Γ + Γ') / 2.0)
-
-    Γ_diag_base = real(U' * Γ * U)
-    for iiter = 1:(N_f)
-        energy += Γ_diag_base[iiter, iiter] * D[iiter+N_f, iiter+N_f]
-        energy += Γ_diag_base[iiter+N_f, iiter+N_f] * D[iiter, iiter]
-    end
-
-    return real(energy)
+    N_f = size(Γ, 1) ÷ 2
+    Γ = Hermitian((Γ + Γ') / 2)
+    Γ_d = real.(diag(U' * Γ * U))
+    d   = real.(diag(D))
+    return dot(Γ_d[1:N_f], d[N_f+1:end]) + dot(Γ_d[N_f+1:end], d[1:N_f])
 end
 
 function Evolve(M, (D, U), t)
-    N = div(size(M, 1), 2)
-
-    M = (M + M') / 2.0
-
-    M_diag_base = U' * M * U
-    M_diag_base_evolv = exp(im * 2 * D * t) * M_diag_base * exp(-im * 2 * D * t)
-    M_evolv = U * M_diag_base_evolv * (U')
-
-    M_evolv = (M_evolv + M_evolv') / 2.0
-
-    return M_evolv
+    M = Hermitian((M + M') / 2)
+    M_diag = U' * M * U
+    phases = Diagonal(exp.(2im .* real.(diag(D)) .* t))
+    M_evolv = U * (phases * M_diag * phases') * U'
+    return Hermitian((M_evolv + M_evolv') / 2)
 end

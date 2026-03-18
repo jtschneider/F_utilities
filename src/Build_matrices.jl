@@ -81,41 +81,31 @@ function Build_Fourier_matrix(N)
 end
 
 
-function Build_A_TFI(N, θ, PBC)
-    M_A = LinearAlgebra.diagm(
-        -1 => ones(Float64, N - 1),
-        0 => 2 * cot(θ) * ones(Float64, N),
-        1 => ones(Float64, N - 1),
-    )
-    M_A[1, N] = PBC
-    M_A[N, 1] = PBC
-
-    return -1 / 2.0 .* M_A
+function Build_A_TFI(N, J::AbstractVector, h::AbstractVector, PBC::Number)
+    @assert length(J) == N - 1
+    @assert length(h) == N
+    return -0.5 * LinearAlgebra.diagm(-1 => J, 0 => 2 .* h, 1 => J) +
+           LinearAlgebra.diagm(N - 1 => [-0.5 * PBC], -(N - 1) => [-0.5 * PBC])
 end
 
-function Build_B_TFI(N, PBC)
-    M_B = LinearAlgebra.diagm(
-        -1 => ones(Float64, N - 1),
-        0 => zeros(Float64, N),
-        1 => -ones(Float64, N - 1),
-    )
-    M_B[1, N] = PBC
-    M_B[N, 1] = -PBC
-
-    return -1 / 2.0 .* M_B
+function Build_B_TFI(N, J::AbstractVector, PBC::Number)
+    @assert length(J) == N - 1
+    return -0.5 * LinearAlgebra.diagm(-1 => J, 1 => -J) +
+           LinearAlgebra.diagm(N - 1 => [-0.5 * PBC], -(N - 1) => [0.5 * PBC])
 end
 
-function TFI_Hamiltonian(N, θ; PBC = +1)
-    A = Build_A_TFI(N, θ, PBC)
-    B = Build_B_TFI(N, PBC)
+# Vector API: site-dependent J and h (AD-friendly)
+function TFI_Hamiltonian(N, J::AbstractVector, h::AbstractVector; PBC = 0.0)
+    A = Build_A_TFI(N, J, h, PBC)
+    B = Build_B_TFI(N, J, PBC)
+    return Hermitian([-A B; -B A])
+end
 
-    H_TFI = zeros(Float64, 2 * N, 2 * N)
-    H_TFI[1:N, 1:N] = -A
-    H_TFI[((1:N).+N), 1:N] = -B
-    H_TFI[1:N, (1:N).+N] = B
-    H_TFI[(1:N).+N, (1:N).+N] = A
-
-    return H_TFI
+# Scalar API: uniform couplings via angle θ (backward compatible)
+function TFI_Hamiltonian(N, θ::Real; PBC = +1)
+    J = ones(typeof(θ), N - 1)
+    h = cot(θ) .* ones(typeof(θ), N)
+    return TFI_Hamiltonian(N, J, h; PBC = PBC)
 end
 
 function Build_A_TFI_impurity(N, h, impurity, PBC; im_pos::Int=N÷2)
@@ -159,14 +149,7 @@ end
 function TFI_Hamiltonian_impurity(N, h, impurity; PBC = +1, im_pos::Int=N÷2)
     A = Build_A_TFI_impurity(N, h, impurity, PBC; im_pos=im_pos)
     B = Build_B_TFI_impurity(N, impurity, PBC; im_pos=im_pos)
-
-    H = zeros(Float64, 2 * N, 2 * N)
-    H[1:N, 1:N] = -A
-    H[((1:N).+N), 1:N] = -B
-    H[1:N, (1:N).+N] = B
-    H[(1:N).+N, (1:N).+N] = A
-
-    return H
+    return Hermitian([-A B; -B A])
 end
 
 function Build_A_TFI_FIX(N, θ, PBC)
@@ -201,14 +184,7 @@ end
 function TFI_Hamiltonian_FIX(N, θ; PBC = +1)
     A = Build_A_TFI_FIX(N, θ, PBC)
     B = Build_B_TFI_FIX(N, PBC)
-
-    H_TFI = zeros(Float64, 2 * N, 2 * N)
-    H_TFI[1:N, 1:N] = -A
-    H_TFI[((1:N).+N), 1:N] = -B
-    H_TFI[1:N, (1:N).+N] = B
-    H_TFI[(1:N).+N, (1:N).+N] = A
-
-    return H_TFI
+    return Hermitian([-A B; -B A])
 end
 
 
@@ -217,54 +193,27 @@ end
 
 
 
-function Build_A_JXJY(Jx, Jy, lambdas)
-    dimension = size(Jx, 1)
-    M_A = zeros(Float64, dimension, dimension)
-    for iiter = 2:dimension-1
-        M_A[iiter, iiter] = -2 * lambdas[iiter]
-        M_A[iiter, iiter-1] = -(Jx[iiter-1] + Jy[iiter-1])
-        M_A[iiter, iiter+1] = -(Jx[iiter] + Jy[iiter])
-    end
-    M_A[1, 1] = -2 * lambdas[1]#
-    M_A[1, 2] = -(Jx[1] + Jy[1])#
-
-    M_A[1, dimension] = -(Jx[dimension] + Jy[dimension])#
-    M_A[dimension, 1] = -(Jx[dimension] + Jy[dimension])
-    M_A[dimension, dimension-1] = -(Jx[dimension-1] + Jy[dimension-1])   #
-    M_A[dimension, dimension] = -2 * lambdas[dimension]#
-
-    return M_A
+function Build_A_JXJY(Jx::AbstractVector, Jy::AbstractVector, lambdas::AbstractVector)
+    N = length(lambdas)
+    JpJ = Jx + Jy
+    return LinearAlgebra.diagm(
+        -1 => -JpJ[1:N-1],
+         0 => -2 .* lambdas,
+         1 => -JpJ[1:N-1],
+    ) + LinearAlgebra.diagm(N - 1 => [-JpJ[N]], -(N - 1) => [-JpJ[N]])
 end
 
-
-
-function Build_B_JXJY(Jx, Jy)
-    dimension = size(Jx, 1)
-    M_B = zeros(Float64, dimension, dimension)
-    for iiter = 2:dimension-1
-        M_B[iiter, iiter-1] = -(Jx[iiter-1] - Jy[iiter-1])
-        M_B[iiter, iiter+1] = Jx[iiter] - Jy[iiter]
-    end
-    M_B[1, 2] = Jx[1] - Jy[1]
-
-    M_B[1, dimension] = -(Jx[dimension] - Jy[dimension])#
-    M_B[dimension, 1] = (Jx[dimension] - Jy[dimension])#
-
-    M_B[dimension, dimension-1] = -(Jx[dimension-1] - Jy[dimension-1])
-
-    return M_B
+function Build_B_JXJY(Jx::AbstractVector, Jy::AbstractVector)
+    N = length(Jx)
+    JmJ = Jx - Jy
+    return LinearAlgebra.diagm(
+        -1 => -JmJ[1:N-1],
+         1 =>  JmJ[1:N-1],
+    ) + LinearAlgebra.diagm(N - 1 => [-JmJ[N]], -(N - 1) => [JmJ[N]])
 end
-
 
 function JXJY_Hamiltonian(N, Jx, Jy, lambda)
     A = 0.5 * Build_A_JXJY(Jx, Jy, lambda)
     B = 0.5 * Build_B_JXJY(Jx, Jy)
-
-    H_JXJY = zeros(Float64, 2 * N, 2 * N)
-    H_JXJY[1:N, 1:N] = -A
-    H_JXJY[((1:N).+N), 1:N] = -B
-    H_JXJY[1:N, (1:N).+N] = B
-    H_JXJY[(1:N).+N, (1:N).+N] = A
-
-    return H_JXJY
+    return Hermitian([-A B; -B A])
 end

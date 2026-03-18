@@ -5,13 +5,9 @@
   and column `u`  has been exchanged with column `d`.
 """
 function Permute_rc(M, u, d)
-    temp = M[u, :]
-    M[u, :] = M[d, :]
-    M[d, :] = temp
-    temp = M[:, u]
-    M[:, u] = M[:, d]
-    M[:, d] = temp
-    return M
+    idx = collect(1:size(M, 1))
+    idx[u], idx[d] = idx[d], idx[u]
+    return M[idx, idx]
 end
 
 """
@@ -22,57 +18,17 @@ end
 """
 function Reduce_gamma(M, N_partition, first_index)
     N_f = div(size(M, 1), 2)
-    first_index = first_index - 1
-    periodic_dimension = max((N_partition .+ first_index - N_f), 0)
-    dim_UL = N_partition - periodic_dimension
-
-    redgamma = zeros(Complex{Float64}, N_partition * 2, N_partition * 2)
-    #Copy the upper left left part of the correlation matrix
-    redgamma[1:dim_UL, 1:dim_UL] = M[(1:dim_UL).+first_index, (1:dim_UL).+first_index]
-    redgamma[(1:dim_UL).+N_partition, 1:dim_UL] =
-        M[(1:dim_UL).+N_f.+first_index, (1:dim_UL).+first_index]
-    redgamma[1:dim_UL, (1:dim_UL).+N_partition] =
-        M[(1:dim_UL).+first_index, (1:dim_UL).+N_f.+first_index]
-    redgamma[(1:dim_UL).+N_partition, (1:dim_UL).+N_partition] =
-        M[(1:dim_UL).+N_f.+first_index, (1:dim_UL).+N_f.+first_index]
-
-    if (periodic_dimension > 0)
-        redgamma[(dim_UL.+(1:periodic_dimension)), (dim_UL.+(1:periodic_dimension))] =
-            M[1:periodic_dimension, 1:periodic_dimension]
-        redgamma[1:dim_UL, (dim_UL.+(1:periodic_dimension))] =
-            M[(first_index.+(1:dim_UL)), 1:periodic_dimension]
-        redgamma[(dim_UL.+(1:periodic_dimension)), 1:dim_UL] =
-            M[1:periodic_dimension, (first_index.+(1:dim_UL))]
-
-        redgamma[
-            (dim_UL.+(1:periodic_dimension)).+N_partition,
-            (dim_UL.+(1:periodic_dimension)),
-        ] = M[(1:periodic_dimension).+N_f, 1:periodic_dimension]
-        redgamma[(1:dim_UL).+N_partition, (dim_UL.+(1:periodic_dimension))] =
-            M[(first_index.+(1:dim_UL)).+N_f, 1:periodic_dimension]
-        redgamma[(dim_UL.+(1:periodic_dimension)).+N_partition, 1:dim_UL] =
-            M[(1:periodic_dimension).+N_f, (first_index.+(1:dim_UL))]
-
-        redgamma[
-            (dim_UL.+(1:periodic_dimension)),
-            (dim_UL.+(1:periodic_dimension)).+N_partition,
-        ] = M[1:periodic_dimension, (1:periodic_dimension).+N_f]
-        redgamma[1:dim_UL, (dim_UL.+(1:periodic_dimension)).+N_partition] =
-            M[(first_index.+(1:dim_UL)), (1:periodic_dimension).+N_f]
-        redgamma[(dim_UL.+(1:periodic_dimension)), (1:dim_UL).+N_partition] =
-            M[1:periodic_dimension, (first_index.+(1:dim_UL)).+N_f]
-
-        redgamma[
-            (dim_UL.+(1:periodic_dimension)).+N_partition,
-            (dim_UL.+(1:periodic_dimension)).+N_partition,
-        ] = M[(1:periodic_dimension).+N_f, (1:periodic_dimension).+N_f]
-        redgamma[(1:dim_UL).+N_partition, (dim_UL.+(1:periodic_dimension)).+N_partition] =
-            M[(first_index.+(1:dim_UL)).+N_f, (1:periodic_dimension).+N_f]
-        redgamma[(dim_UL.+(1:periodic_dimension)).+N_partition, (1:dim_UL).+N_partition] =
-            M[(1:periodic_dimension).+N_f, (first_index.+(1:dim_UL)).+N_f]
-    end
-
-    return Hermitian(redgamma)
+    fi = first_index - 1
+    pd = max(N_partition + fi - N_f, 0)
+    dim_UL = N_partition - pd
+    # Row/column index map: subsystem A sites, wrapping A sites, B sites, wrapping B sites
+    rows = vcat(
+        (1:dim_UL) .+ fi,
+        1:pd,
+        (1:dim_UL) .+ (N_f + fi),
+        (1:pd) .+ N_f,
+    )
+    return Hermitian(M[rows, rows])
 end
 
 """

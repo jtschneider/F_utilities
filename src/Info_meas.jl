@@ -146,11 +146,10 @@ function VN_entropy_old(M)
     return S
 end
 
-function VN_entropy(M; accuracy::Float64 = 1e-32)
-    λs, U = LinearAlgebra.eigen(Hermitian(M))
-    λs_filter = filter( p -> p >= accuracy,  λs)
-    S = mapreduce(p -> -log(p)*p, +, λs_filter; init=0.0)
-    return S
+function VN_entropy(M; accuracy = 1e-32)
+    λs, _ = LinearAlgebra.eigen(Hermitian(M))
+    # max(p, accuracy) avoids log(0) and is smooth for AD (no filter/branching)
+    return real(-mapreduce(p -> p * log(max(p, accuracy)), +, λs; init = zero(eltype(λs))))
 end
 
 

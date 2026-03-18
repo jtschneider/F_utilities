@@ -9,18 +9,12 @@ function Thermal_fix_beta(Diag_H, U_H, beta)
     return Thermal_fix_beta((Diag_H, U_H), beta)
 end
 function Thermal_fix_beta((Diag_H, U_H), beta)
-    N_f = convert(Int64, size(Diag_H, 1) / 2.0)
-
-    gamma = zeros(Complex{Float64}, size(Diag_H, 1), size(Diag_H, 1))
-    for kiter = 1:N_f
-        e_k = Diag_H[kiter+N_f, kiter+N_f]
-        gamma[kiter, kiter] = 1 / (1 + exp(2 * beta * e_k))
-        gamma[kiter+N_f, kiter+N_f] = 1 / (1 + exp(-2 * beta * e_k))
-    end
-
-    gamma = U_H * gamma * U_H'
-
-    return gamma
+    N_f = size(Diag_H, 1) ÷ 2
+    e_ks = real.(diag(Diag_H)[N_f+1:end])
+    occ      = @. 1 / (1 + exp( 2 * beta * e_ks))
+    anti_occ = @. 1 / (1 + exp(-2 * beta * e_ks))
+    gamma = Diagonal(vcat(occ, anti_occ))
+    return U_H * gamma * U_H'
 end
 
 """
