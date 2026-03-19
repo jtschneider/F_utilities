@@ -9,18 +9,15 @@ function Diag_real_skew(M, rand_perturbation::Int64 = 0)
             M += random_M
         end
         if (rand_perturbation == 4)
-            random_M = zeros(Complex{Float64}, 2N, 2N)
-            random_M[1, N+2] = eps()
-            random_M[2, N+1] = -random_M[1, N+2]
-            random_M = (random_M - random_M') / 2.0
-            M += random_M
+            r = eps() / 2
+            M = copy(M)
+            M[1, N+2] += r;  M[N+2, 1] -= r
+            M[2, N+1] -= r;  M[N+1, 2] += r
         end
         if (rand_perturbation == 5)
             r = eps()
-            delta = zeros(eltype(M), size(M))
-            delta[1, 2] = r
-            delta[2, 1] = -r
-            M = M + delta
+            M = copy(M)
+            M[1, 2] += r;  M[2, 1] -= r
         end
     end
 
@@ -65,40 +62,46 @@ function Diag_real_skew(M, rand_perturbation::Int64 = 0)
         pushfirst!(swap_perm, 2N)
     end
 
-    M_temp = Schur_blocks_i[swap_perm, swap_perm]
-    O_temp = Schur_ort_i[:, swap_perm]
-
-    # Sort the blocks, λ_1>=λ_2>=...>=λ_N with λ_1 the coefficient in the upper left block
-    psort = sortperm(diag(M_temp, 1)[begin:2:end], rev = true)
+    # Sort the blocks, λ_1>=λ_2>=...>=λ_N with λ_1 the coefficient in the upper left block.
+    # In the common case (no 1x1 blocks / zero eigenvalues) we can compose the two permutations
+    # directly, avoiding two intermediate 2N×2N matrix allocations.
+    has_1x1_blocks = (swap_perm[1] > swap_perm[2])  # pushfirst! reverses order for 1x1 pairs
     full_psort = zeros(Int64, 2N)
-    full_psort[begin:2:end] .= 2 .* psort .- 1
-    full_psort[begin+1:2:end] .= 2 .* psort
-
-    M_f = M_temp[full_psort, full_psort]
-    O_f = real(O_temp[:, full_psort])
+    if !has_1x1_blocks
+        block_evals = [Schur_blocks_i[swap_perm[2k-1], swap_perm[2k]] for k in 1:N]
+        psort = sortperm(block_evals, rev = true)
+        full_psort[begin:2:end]   .= 2 .* psort .- 1
+        full_psort[begin+1:2:end] .= 2 .* psort
+        combined = swap_perm[full_psort]
+        M_f = Schur_blocks_i[combined, combined]
+        O_f = real.(Schur_ort_i[:, combined])
+    else
+        M_temp = Schur_blocks_i[swap_perm, swap_perm]
+        O_temp = Schur_ort_i[:, swap_perm]
+        psort = sortperm(diag(M_temp, 1)[begin:2:end], rev = true)
+        full_psort[begin:2:end]   .= 2 .* psort .- 1
+        full_psort[begin+1:2:end] .= 2 .* psort
+        M_f = M_temp[full_psort, full_psort]
+        O_f = real.(O_temp[:, full_psort])
+    end
 
     return M_f, O_f
 end
 
 
 function Diag_h(M, rand_perturbation::Int64 = 0)
-    N = div(size(M, 1), 2)
-
-    F_xptxx = Build_FxpTxx(N)
+    N = size(M, 1) ÷ 2
 
     Ω = Build_Omega(N)
-    M_temp = real(-im * Ω * M * Ω')
-    # M_temp += 0.01*rand(2*N,2*N);
-    M_temp = (M_temp - M_temp') / 2.0
-    #M_temp[1,1] += eps();
-    M_temp, O = Diag_real_skew(M_temp, rand_perturbation)
-    M_temp = F_xptxx * M_temp * (F_xptxx')
-    M_temp = im * Ω' * M_temp * (Ω)
+    M_skew = real(-im * Ω * M * Ω')
+    M_skew = (M_skew - M_skew') / 2.0
+    _, O = Diag_real_skew(M_skew, rand_perturbation)
 
-    M_f = M_temp
-    U_f = Ω' * O * (F_xptxx') * Ω
+    # F_xptxx is a permutation [1,3,…,2N-1, 2,4,…,2N]; apply as column selection (O(N²) vs O(N³))
+    p = [1:2:2N; 2:2:2N]
+    U_f = Ω' * O[:, p] * Ω
 
-    return real.(U_f' * M * U_f), U_f#real(M_f), U_f;
+    return real.(U_f' * M * U_f), U_f
 end
 
 function Diag_gamma(Γ, rand_perturbation::Int64 = 0)
